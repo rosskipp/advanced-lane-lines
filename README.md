@@ -1,9 +1,4 @@
-## Advanced Lane Finding
-
-Creating a great writeup:
----
-A great writeup should include the rubric points as well as your description of how you addressed each point.  You should include a detailed description of the code used in each step (with line-number references and code snippets where necessary), and links to other supporting documents or external references.  You should include images in your writeup to demonstrate how your code works with examples.  
-
+# Advanced Lane Finding
 
 The Project
 ---
@@ -21,11 +16,11 @@ The goals / steps of this project are the following:
 
 
 
-## Writeup
+# Writeup
 
-### Camera Calibration
+## Camera Calibration
 
-#### Chessboard images
+### Chessboard images
 
 There were test images provided that had various angles of the chessboard image on a wall. These images were fed into a pipeline which used the OpenCV function `findChessboardCorners` to find the corners of the chessboard. Like so:
 
@@ -41,7 +36,7 @@ Note that if the images are blank, then the `findChessboardCorners` didn't retur
 
 If the corners were found, they were added to a list of all the corners. The list of these image points and a list of the object points are passed into the `calibrateCamera` function to get the camera distortion coefficients. The matricies calculated here will be used throughout the rest of the project.
 
-#### Undistorting Images
+### Undistorting Images
 
 We can then use the `cv2.undistort` function, passing in the camera matrix and the distortion matrix, on an image to calculate the undistorted image. Here's the helper function I wrote to do this:
 
@@ -56,9 +51,9 @@ Here's an example of an original image, and an undistorted version of that image
 ![Undistort Example](./output_images/undistort.png)
 
 
-### Image Pipeline
+## Image Pipeline
 
-#### Perspective Transform
+### Perspective Transform
 
 After we have the undistorted images, we can perform a perspective transform to get a birds-eye view of the lane lines. This will help us fit polynomials to the lines later. To perform the transform, I used the cv2 `getPerspectiveTransform` and `warpPerspective` functions to first calculate the transform matrix using source and destination points, the applying that transform to a given image. Here is the helper function I wrote that accomplishes that:
 
@@ -99,6 +94,6 @@ And here's what those same points look like on curved lane lines:
 ![Curved Transform 1](./output_images/warped_curved_lines_1.png)
 ![Curved Transform 2](./output_images/warped_curved_lines_2.png)
 
-#### Threshold Binary Images
+### Threshold Binary Images
 
 I spent a lot of time reviewing which color channels were the best at pulling out the lane lines in the test images. There are many examples of this work in the ipython notebook, but here's an example:
