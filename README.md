@@ -1,7 +1,6 @@
 # Advanced Lane Finding
 
-The Project
----
+## The Project
 
 The goals / steps of this project are the following:
 
@@ -14,9 +13,9 @@ The goals / steps of this project are the following:
 * Warp the detected lane boundaries back onto the original image.
 * Output visual display of the lane boundaries and numerical estimation of lane curvature and vehicle position.
 
-
-
 # Writeup
+
+The notebook where all the code lives can be found [here](https://github.com/rkipp1210/advanced-lane-lines/blob/master/advanced-lane-detection.ipynb).
 
 ## Camera Calibration
 
@@ -97,3 +96,75 @@ And here's what those same points look like on curved lane lines:
 ### Threshold Binary Images
 
 I spent a lot of time reviewing which color channels were the best at pulling out the lane lines in the test images. There are many examples of this work in the ipython notebook, but here's an example:
+
+![Channel Example](./output_images/color_channel_example.png)
+
+From studying these images, I eliminated a few options. I moved on to creating threshold binary images from the images that looked the best (HLS L and S channels, HSV V channel, and R from RGB). I was able to figure out how to make sliders to adjust the thresholds so I tuned the thresholding this way. I also did this with the Sobel operator and found that the X direction derivatives seemed the best. After running through many iterations I use the R from RGB and the Sobel X to generate my binary threshold image. Here's an example of that image pipeline:
+
+![Channel Example](./output_images/binary_threshold_build.png)
+
+The code for this can be found in the notebook.
+
+
+### Finding Lane Line Pixels and Fitting
+
+```
+Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
+
+Methods have been used to identify lane line pixels in the rectified binary image. The left and right line have been identified and fit with a curved functional form (e.g., spine or polynomial). Example images with line pixels identified and a fit overplotted should be included in the writeup (or saved to a folder) and submitted with the project.
+```
+
+
+
+
+
+
+
+### Calculating Corner Radius and Lane Center
+
+```
+Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
+
+Here the idea is to take the measurements of where the lane lines are and estimate how much the road is curving and where the vehicle is located with respect to the center of the lane. The radius of curvature may be given in meters assuming the curve of the road follows a circle. For the position of the vehicle, you may assume the camera is mounted at the center of the car and the deviation of the midpoint of the lane from the center of the image is the offset you're looking for. As with the polynomial fitting, convert from pixels to meters.
+```
+
+
+
+The radius of curvature is calculated using
+
+
+
+
+### Final Product
+
+Using all of the above functions to assemble the final pipeline gives this result:
+
+![Sample output 1](./output_images/test1-output.png)
+![Sample output 2](./output_images/test2-output.png)
+![Sample output 3](./output_images/test3-output.png)
+![Sample output 4](./output_images/test4-output.png)
+![Sample output 5](./output_images/test5-output.png)
+![Sample output 6](./output_images/test6-output.png)
+
+
+## Video
+
+```
+Provide a link to your final video output. Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!)
+
+The image processing pipeline that was established to find the lane lines in images successfully processes the video. The output here should be a new video where the lanes are identified in every frame, and outputs are generated regarding the radius of curvature of the lane and vehicle position within the lane. The pipeline should correctly map out curved lines and not fail when shadows or pavement color changes are present. The output video should be linked to in the writeup and/or saved and submitted with the project.
+```
+
+
+
+
+
+## Discussion
+
+```
+Briefly discuss any problems / issues you faced in your implementation of this project. Where will your pipeline likely fail? What could you do to make it more robust?
+
+Discussion includes some consideration of problems/issues faced, what could be improved about their algorithm/pipeline, and what hypothetical cases would cause their pipeline to fail.
+```
+
+My solution works well on the project video, but really shows some weakness on the more advanced videos. This leads me to believe that I could spend more time tuning which color channels and thresholds to use for my binary image creation, as it seems so struggle a little with some of the bright and shadowed areas.
