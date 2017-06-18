@@ -139,12 +139,12 @@ The radius of curvature is calculated using
 
 Using all of the above functions to assemble the final pipeline gives this result:
 
-![Sample output 1](./output_images/test1-output.png)
-![Sample output 2](./output_images/test2-output.png)
-![Sample output 3](./output_images/test3-output.png)
-![Sample output 4](./output_images/test4-output.png)
-![Sample output 5](./output_images/test5-output.png)
-![Sample output 6](./output_images/test6-output.png)
+![Sample output 1](./output_images/test1-output.jpg)
+![Sample output 2](./output_images/test2-output.jpg)
+![Sample output 3](./output_images/test3-output.jpg)
+![Sample output 4](./output_images/test4-output.jpg)
+![Sample output 5](./output_images/test5-output.jpg)
+![Sample output 6](./output_images/test6-output.jpg)
 
 
 ## Video
