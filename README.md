@@ -59,20 +59,17 @@ After we have the undistorted images, we can perform a perspective transform to 
 ```python
 def warper(img):
 
-    # Points for the original image
     src = np.float32([
-        [250, 675],
+        [150, 720],
         [590, 450],
         [690, 450],
-        [1055, 675]
+        [1150, 720]
     ])
-
-    # Points for the new image
     dst = np.float32([
-        [250, 750],
+        [250, 720],
         [250, 0],
         [1035, 0],
-        [1035, 750]
+        [1035, 720]
     ])
 
     # Compute and apply perpective transform
@@ -99,12 +96,36 @@ I spent a lot of time reviewing which color channels were the best at pulling ou
 
 ![Channel Example](./output_images/color_channel_example.png)
 
-From studying these images, I eliminated a few options. I moved on to creating threshold binary images from the images that looked the best (HLS L and S channels, HSV V channel, and R from RGB). I was able to figure out how to make sliders to adjust the thresholds so I tuned the thresholding this way. I also did this with the Sobel operator and found that the X direction derivatives seemed the best. After running through many iterations I use the R from RGB and the Sobel X to generate my binary threshold image. Here's an example of that image pipeline:
+From studying these images, I eliminated a few options. I moved on to creating threshold binary images from the images that looked the best (HLS L and S channels, HSV V channel, and R from RGB). I tuned the thresholding until I was able to capture just the pixels of interest. I also did this with the Sobel operator and found that the X direction derivatives seemed the best. After running through many iterations I use the R from RGB and the Sobel X to generate my binary threshold image. Here's an example of that image pipeline:
 
 ![Channel Example](./output_images/binary_threshold_build.png)
 
-The code for this can be found in the notebook.
+The code for everything can be found in the notebook. But here's my binary pipeline function.
 
+```python
+def binaryPipe(img):
+
+    # Copy the image
+    img = np.copy(img)
+
+    # Undistort the image based on the camera calibration
+    undist = undistort(img, mtx, dist)
+
+    # warp the image based on our perspective transform
+    warped = warper(undist)
+
+    # Get the Red and saturation images
+    red = rgb_rthresh(warped, thresh=(225, 255))
+
+    # Run the sobel magnitude calculation
+    sobel = calc_sobel(warped, sobel_kernel=15,  mag_thresh=(50, 220))
+
+    # combine these layers
+    combined_binary = np.zeros_like(sobel)
+    combined_binary[ (red == 1) | (sobel == 1) ] = 1
+
+    return combined_binary
+```
 
 ### Finding Lane Line Pixels and Fitting
 
@@ -114,25 +135,58 @@ Describe how (and identify where in your code) you identified lane-line pixels a
 Methods have been used to identify lane line pixels in the rectified binary image. The left and right line have been identified and fit with a curved functional form (e.g., spine or polynomial). Example images with line pixels identified and a fit overplotted should be included in the writeup (or saved to a folder) and submitted with the project.
 ```
 
+The step where I find the lane lines and fit a polynomial to the lines takes in the warped, binary threshold image. If we don't have any previous fit data, then I first take a histogram of the bottom half of the warped, binary threshold image. This will identify where the most "hot" pixels are and I select a window around these points (+/- 100 px of the maximum). There are 9 windows, so each window is 80px tall for these images (720 / 9). For each window, I pull out all the pixels from the binary threshold image that are "on", and add them to the list of indicies. For the next window, I use the average of the current "on" pixels to be the middle of the next window. At the end, I fit a polynomial through all the pixels that were found in the windows and were "on".  Here's an example image from that process:
 
+![window fitting](./output_images/finding_lane_pixels.png)
 
+For a previous fit, the window is the previous fit +/- 100 px so it's a polynomial window. I pull out all the "on" pixels from this window and fit a polynomial through those points.
 
-
-
+![window fitting from prev](./output_images/finding_lane_pixels_from_prev.png)
 
 ### Calculating Corner Radius and Lane Center
 
+The radius of curvature is calculated using the equations provided in the lecture. I convert the fits to meters when I perform the fits, so I don't have to do it in my radius calculation. The radius of curvature calculation is a part of the Line class, and here is that code:
+
+```python
+def calc_radius(self):
+    """
+    best_fit_m is assumed to already be in meters
+    """
+    y_eval = self.y_eval
+    fit = self.best_fit_m
+
+    curve_rad = ((1 + (2*fit[0]*y_eval + fit[1])**2)**1.5) / np.absolute(2*fit[0])
+    self.radius_of_curvature = curve_rad
+    return
 ```
-Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
-Here the idea is to take the measurements of where the lane lines are and estimate how much the road is curving and where the vehicle is located with respect to the center of the lane. The radius of curvature may be given in meters assuming the curve of the road follows a circle. For the position of the vehicle, you may assume the camera is mounted at the center of the car and the deviation of the midpoint of the lane from the center of the image is the offset you're looking for. As with the polynomial fitting, convert from pixels to meters.
+For finding the lane center I evaluate the fits at the bottom of the image, then compare those to the center of the image (which is assumed to be in the center of the lane when the care is centered in the lane).
+
+```python
+def calc_center_dist(self):
+    """
+    calculate the distance of this line to the center of the image (where the camera is)
+    """
+    # meters per pixel in x dimension
+    xm_per_pix = 3.7/700
+
+    y = self.y_eval
+    x0 = self.best_fit_px[0]*(y**2) + self.best_fit_px[1]*y + self.best_fit_px[2]
+    lane_to_camera_px = abs(self.camera_position - x0)
+    self.lane_to_camera = lane_to_camera_px * xm_per_pix
+    return
 ```
 
+Then I compare the left and right distances to get the distance to the center of the image:
 
+```python
+def get_center_dist(leftLine, rightLine):
 
-The radius of curvature is calculated using
+    x_left = leftLine.lane_to_camera
+    x_right = rightLine.lane_to_camera
 
-
+    return x_right - x_left
+```
 
 
 ### Final Product
@@ -149,22 +203,11 @@ Using all of the above functions to assemble the final pipeline gives this resul
 
 ## Video
 
-```
-Provide a link to your final video output. Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!)
+To process the video, I created a Line class that keeps track of previous fits and performs calculations for the current line fits (radius calculation, center of lane distance). It uses an average of the last n nuber of fits (n <= 5) for the "best fit". If we found a fit in the previous frame, then we use the simplified fitting process. If a fit is too different from the previous fit, then we categorize it as a bad fit and fall back on the more robust fitting mechanism on the next iteration.
 
-The image processing pipeline that was established to find the lane lines in images successfully processes the video. The output here should be a new video where the lanes are identified in every frame, and outputs are generated regarding the radius of curvature of the lane and vehicle position within the lane. The pipeline should correctly map out curved lines and not fail when shadows or pavement color changes are present. The output video should be linked to in the writeup and/or saved and submitted with the project.
-```
-
-
-
+The video is here: https://github.com/rkipp1210/advanced-lane-lines/blob/master/output_video/project_video_output.mp4
 
 
 ## Discussion
 
-```
-Briefly discuss any problems / issues you faced in your implementation of this project. Where will your pipeline likely fail? What could you do to make it more robust?
-
-Discussion includes some consideration of problems/issues faced, what could be improved about their algorithm/pipeline, and what hypothetical cases would cause their pipeline to fail.
-```
-
-My solution works well on the project video, but really shows some weakness on the more advanced videos. This leads me to believe that I could spend more time tuning which color channels and thresholds to use for my binary image creation, as it seems so struggle a little with some of the bright and shadowed areas.
+My solution works well on the project video, but really shows some weakness on the more advanced videos. This leads me to believe that I could spend more time tuning which color channels and other operators and thresholds to use for my binary image creation, as it seems so struggle a little with some of the bright and shadowed areas.  I also think that moving the warping points from image to image might help. It seems that with some images, the curves start to go out of the image, or start much farther to the left/right from previous fits.
